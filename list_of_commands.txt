@@ -1,0 +1,138 @@
+sudo apt-get install openvswitch-switch
+sudo apt-get install openvswitch-common bridge-utils
+
+sudo mkdir /usr/local/etc/openvswitch
+sudo screen -d -S ovsdb -m bash -c 'ovsdb-server -v --log-file --pidfile --remote=punix:/usr/local/var/run/openvswitch/db.sock'
+sudo screen -d -S ovsswitch -m bash -c 'ovs-vswitchd --pidfile'
+
+sudo ovs-vsctl add-br br0
+sudo ovs-vsctl add-port br0 br0-int -- set interface br0-int type=internal
+
+ovs-vsctl add-port ovsbr0 vx1 -- set interface vx1 type=vxlan options:remote_ip=10.128.0.2 options:key=2001
+ovs-vsctl add-port br0 vx1 -- set interface vx1 type=vxlan options:remote_ip=10.128.0.5 options:key=2001
+
+//enable OS login on gcp
+enable-oslogin TRUE	
+
+startup-script
+#!/bin/bash
+useradd -g google-sudoers temp
+echo "temp:password" | sudo chpasswd
+
+//change password for account "temp"
+sudo passwd temp
+
+/reinstall java
+sudo apt-get purge openjdk-\* icedtea-\* icedtea6-\*
+sudo apt remove --purge openjdk-8-jdk
+sudo apt autoremove
+sudo apt install --reinstall openjdk-8-jdk
+
+sudo ovs-vsctl add-port ovsbr0 ens4 -- set interface ens4 type=internal
+
+
+sudo ovs-vsctl del-port ovsbr0 ens4
+sudo ovs-vsctl del-port ovsbr0 vxlan_sys_4789
+ovs-vsctl del-port [bridge] [interface]
+
+sudo ifconfig ovsbr0 up
+sudo ovs-vsctl add-port ovsbr0 ens4
+sudo ovs-vsctl add-port ovsbr0 vxlan_sys_4789
+sudo ifconfig ens4 0
+sudo ifconfig ovsbr0 10.128.0.2 netmask 255.255.255.255
+sudo route add default gw 10.128.0.1 ovsbr0
+
+sudo ip link delete ovsbr0
+sudo ifconfig ovsbr0 down
+sudo dhclient -r
+sudo dhclient
+sudo ovs-vsctl show
+sudo ovs-ofctl show
+sudo ovs-ofctl dump-flows ovsbr0
+sudo ovs-ofctl add-flows ovsbr0 
+sudo ovs-vsctl set bridge ovsbr0 protocols=OpenFlow10 -- set-controller ovsbr0 tcp:74.65.221.238:6633
+
+
+sudo ip route add 10.128.0.0/32 dev ovsbr0
+sudo route del -net 10.128.0.0 gw 0.0.0.0 netmask 255.255.240.0 dev ovsbr0
+
+sudo ovs-vsctl add-port ovsbr0 vx2 -- set interface vx2 type=vxlan options:remote_ip=10.128.0.4 options:key=2001 ofport_request=10
+
+sudo ifconfig ovsbr0 10.128.0.2
+
+echo 'export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/jre' >> ~/.bashrc
+source ~/.bashrc
+echo $JAVA_HOME
+
+sudo ovs-vsctl add-port br0 vx1 -- set interface vx1 type=vxlan options:remote_ip=10.128.0.7 options:key=2000
+
+sudo ovs-vsctl add-port br0 vx2 -- set interface vx1 type=vxlan options:remote_ip=10.128.0.5 options:key=2001
+
+//add ip overlay addresses to hosts
+sudo ifconfig br0-int 100.0.0.101 mtu 1400 up
+sudo ifconfig br0-int 100.0.0.102 mtu 1400 up
+
+feature:repo-refresh
+feature:install odl-dluxapps-applications odl-restconf odl-dluxapps-applications odl-openflowplugin-southbound odl-l2switch-all
+feature:install odl-restconf-all odl-openflowplugin-all odl-l2switch-all odl-mdsal-all odl-yangtools-common //OpenDayLight 0.3.0
+
+//permanently enables ipforwarding
+sudo sysctl -w net.ipv4.ip_forward=1
+
+//install google chrome
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+sudo dpkg -i google-chrome-stable_current_amd64.deb
+sudo apt-get install -f
+//launch chrome
+google-chrome --no-sandbox http://google.com
+
+sudo apt-get install xrdp xorg
+sudo apt-get install xorgxrdp
+//from xrdp xfce, run the command below for performance improvement
+xfconf-query -c xfwm4 -p /general/use_compositing -s false
+
+//see traffic on vswitch1-cal
+sudo iftop -i ens4
+
+gcloud compute start-iap-tunnel host1-cal 3389 --local-host-port=localhost:8080
+
+
+//windows
+python -m pip install
+//linux
+sudo apt-get install python-pip
+sudo pip install numpy
+sudo pip install pandas
+
+//smb mounting from linux
+sudo apt-get install cifs-utils
+sudo mkdir -p /mnt/pi/Share4All && sudo mount -t cifs //raspberrypi/Share4All /mnt/pi/Share4All -o username=pi
+
+
+
+# This halts (shuts down) the computer now
+sudo shutdown -h now
+
+# This reboots the computer now
+sudo shutdown -r now
+
+#flush dns cache
+sudo systemd-resolve --flush-caches
+
+To simulate an additional latency of 80 ms, just type sudo tc qdisc add dev eth0 root netem delay 80ms
+It just adds a fixed amount of delay to all packets going out of the local Ethernet.
+
+To stop the additional latency, just type sudo tc qdisc change dev eth0 root netem delay 0ms
+
+//network stats every 30 seconds
+sar -n DEV --iface=eth0 15 720 > testfile.txt
+
+//tcpdump record to file with buffer size in KiB
+sudo tcpdump -B 4096 -w filename.pcapng -i eth0
+
+
+(frame.time >= "Month day, year hours:minutes:seconds" && frame.time <= "Month day, year hours:minutes:seconds")
+
+
+//get DNS RTT; filter from pcap listening between ubuntu desktop and ovs; locate time in dns response  and "apply as column"
+dns.flags == 0x8180 and dns.a
